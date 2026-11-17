@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e0e0c">
+<title>Buitenmuseum — prototype</title>
+<style>
+:root{
+  --bg:#0e0e0c;--ink:#f3efe6;--mute:#a59f92;--line:rgba(243,239,230,.14);
+  --glass:rgba(14,14,12,.62);--accent:#e0a84a;--green:#5fd38a;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{overscroll-behavior:none}
+.hidden{display:none!important}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input,textarea{font:inherit}
+
+/* ---------- Home ---------- */
+#home{min-height:100%;padding:calc(30px + var(--sat)) calc(22px + var(--sar)) calc(36px + var(--sab)) calc(22px + var(--sal));max-width:760px;margin:0 auto}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--serif);font-weight:400;font-size:42px;line-height:1.04;margin:10px 0 12px;letter-spacing:-.01em}
+.lead{color:var(--mute);font-size:16px;line-height:1.5;margin:0 0 26px;max-width:44ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;background:var(--ink);color:var(--bg);font-weight:600;font-size:15px;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{height:36px;padding:0 14px;font-size:13.5px}
+.btn.accent{background:var(--accent);color:#1a1307}
+.btn.danger{background:transparent;color:#f0a39a;border:1px solid rgba(240,163,154,.35)}
+.list{margin-top:30px;display:grid;gap:12px}
+.card{display:grid;grid-template-columns:104px 1fr;gap:14px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02)}
+.card img{width:104px;height:78px;object-fit:cover;border-radius:11px;filter:sepia(.2) contrast(1.02);display:block}
+.card h3{font-family:var(--serif);font-weight:400;font-size:20px;margin:0 0 2px;line-height:1.15}
+.card .meta{color:var(--mute);font-size:13px}
+.card .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.empty{border:1px dashed var(--line);border-radius:18px;padding:20px 22px;color:var(--mute);line-height:1.55;font-size:15px}
+.empty b{color:var(--ink);font-weight:600}
+.foot{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.foot p{flex-basis:100%;margin:6px 0 0;color:var(--mute);font-size:13px;line-height:1.5}
+.setting{flex-basis:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.setting .lbl{font-size:13.5px;color:var(--mute)}
+
+/* ---------- Stage ---------- */
+#stage{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#video,#freeze,#nowImg{position:absolute;inset:0;width:100%;height:100%}
+#video,#nowImg{object-fit:cover}
+#photoLayer{position:absolute;inset:0;pointer-events:none;will-change:opacity}
+#photo{position:absolute;transform-origin:50% 50%;will-change:transform;-webkit-user-drag:none;max-width:none}
+#wipeLine{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--ink);box-shadow:0 0 12px rgba(0,0,0,.5);pointer-events:none;z-index:3}
+#wipeLine::after{content:"";position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:var(--ink);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.hud{position:absolute;left:0;right:0;display:flex;align-items:center;gap:8px;padding:0 calc(12px + var(--sar)) 0 calc(12px + var(--sal));pointer-events:none;z-index:6}
+.hud>*{pointer-events:auto}
+.hud.top{top:calc(10px + var(--sat))}
+.hud.bottom{bottom:calc(10px + var(--sab))}
+.round{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:grid;place-items:center;flex:none}
+.round svg{width:20px;height:20px}
+.round.on{background:var(--ink);color:var(--bg)}
+.chip{margin:0 auto;min-height:36px;padding:7px 16px;border-radius:999px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;line-height:1.2;text-align:center;transition:background .25s}
+.chip.ok{background:rgba(38,110,66,.9)}
+.chip small{color:var(--mute);font-weight:400}
+.panel{display:flex;align-items:center;gap:12px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:999px;padding:6px 8px 6px 16px;margin:0 auto;max-width:100%}
+.panel .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.panel .sep{width:1px;height:22px;background:var(--line)}
+.readout{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mute);white-space:nowrap}
+.seg{display:flex;background:rgba(255,255,255,.08);border-radius:999px;padding:3px;flex:none}
+.seg button{height:34px;padding:0 14px;border-radius:999px;font-size:13.5px;color:var(--mute);white-space:nowrap}
+.seg button.on{background:var(--ink);color:var(--bg)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:min(220px,28vw);height:30px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:rgba(243,239,230,.35)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ink);margin-top:-9.5px;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-track{height:3px;border-radius:3px;background:rgba(243,239,230,.35)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--ink);border:0}
+.shutter{width:62px;height:62px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;flex:none;background:rgba(0,0,0,.25)}
+.shutter::after{content:"";width:48px;height:48px;border-radius:50%;background:var(--ink)}
+.side{position:absolute;right:calc(14px + var(--sar));top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px}
+.side .readout{background:var(--glass);padding:4px 8px;border-radius:8px}
+.level{position:absolute;left:50%;top:50%;width:120px;height:0;margin-left:-60px;border-top:1px dashed rgba(243,239,230,.5);pointer-events:none;z-index:4}
+.level.on{border-top:1px solid var(--accent)}
+.grid3{position:absolute;inset:0;pointer-events:none;z-index:3;background:
+  linear-gradient(to right,transparent calc(33.33% - .5px),rgba(255,255,255,.18) calc(33.33% - .5px),rgba(255,255,255,.18) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.18) calc(66.66% - .5px),rgba(255,255,255,.18) calc(66.66% + .5px),transparent calc(66.66% + .5px)),
+  linear-gradient(to bottom,transparent calc(33.33% - .5px),rgba(255,255,255,.18) calc(33.33% - .5px),rgba(255,255,255,.18) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.18) calc(66.66% - .5px),rgba(255,255,255,.18) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
+
+/* ---------- Kader-in-kader ---------- */
+#guide{position:absolute;inset:0;pointer-events:none;z-index:4}
+#frame{position:absolute;transform-origin:50% 50%;border:calc(2.5px / var(--s,1)) solid rgba(243,239,230,.95);border-radius:calc(4px / var(--s,1));box-shadow:0 0 0 calc(1px / var(--s,1)) rgba(0,0,0,.35);will-change:transform;transition:border-color .25s}
+#frame .tag{position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(calc(1 / var(--s,1)));background:rgba(243,239,230,.95);color:#141310;font-size:12px;font-weight:700;padding:3px 9px;border-radius:0 0 8px 0;white-space:nowrap;transition:background .25s}
+#finder{position:absolute;transition:opacity .3s}
+#finder i{position:absolute;width:30px;height:30px;border:4px solid rgba(243,239,230,.95);filter:drop-shadow(0 0 3px rgba(0,0,0,.5));transition:border-color .25s}
+#finder i:nth-child(1){left:-2px;top:-2px;border-right:0;border-bottom:0;border-top-left-radius:10px}
+#finder i:nth-child(2){right:-2px;top:-2px;border-left:0;border-bottom:0;border-top-right-radius:10px}
+#finder i:nth-child(3){left:-2px;bottom:-2px;border-right:0;border-top:0;border-bottom-left-radius:10px}
+#finder i:nth-child(4){right:-2px;bottom:-2px;border-left:0;border-top:0;border-bottom-right-radius:10px}
+#guide.near #frame{border-color:var(--accent)}
+#guide.near #frame .tag{background:var(--accent)}
+#guide.lock #frame,#guide.lock #finder i{border-color:var(--green)}
+#guide.lock #frame .tag{background:var(--green)}
+#guide.lock #frame{box-shadow:0 0 0 calc(1px / var(--s,1)) rgba(0,0,0,.35),0 0 calc(24px / var(--s,1)) rgba(95,211,138,.55)}
+.ar{position:absolute;left:0;top:0;width:54px;height:54px;margin:-27px 0 0 -27px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#1a1307;opacity:0;transform:scale(.6);transition:opacity .2s,transform .2s;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.ar.on{opacity:1;transform:scale(1)}
+.ar span{display:grid;place-items:center}
+.ar svg{width:30px;height:30px}
+.ar.on svg{animation:nudge 1s ease-in-out infinite}
+#arL span{transform:rotate(180deg)}#arU span{transform:rotate(-90deg)}#arD span{transform:rotate(90deg)}
+#arRot svg{animation:none}
+#arRot.ccw span{transform:scaleX(-1)}
+@keyframes nudge{50%{transform:translateX(5px)}}
+
+/* ---------- Play + verhaal ---------- */
+.play{width:52px;height:52px;border-radius:50%;background:var(--accent);color:#1a1307;display:grid;place-items:center;flex:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.play svg{width:22px;height:22px}
+.play.pulse{animation:pp 1.4s ease-in-out infinite}
+@keyframes pp{50%{box-shadow:0 0 0 12px rgba(224,168,74,.25),0 4px 14px rgba(0,0,0,.35)}}
+#story{position:absolute;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);width:min(680px,calc(100% - 40px));z-index:5;background:rgba(14,14,12,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:16px;padding:12px 18px 14px;text-align:center;transition:opacity .35s;pointer-events:none}
+#story .st{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+#story .sl{font-family:var(--serif);font-size:20px;line-height:1.3}
+#story.fade{opacity:0}
+#dbg{position:absolute;left:calc(12px + var(--sal));bottom:calc(74px + var(--sab));z-index:6;background:var(--glass);padding:5px 9px;border-radius:8px;white-space:pre;line-height:1.45}
+
+/* ---------- Rotate hint ---------- */
+#rotateHint{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:30px}
+#rotateHint svg{width:64px;height:64px;animation:turn 2.4s ease-in-out infinite}
+#rotateHint p{font-family:var(--serif);font-size:24px;margin:0}
+#rotateHint small{color:var(--mute);font-size:14px}
+@keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@media (orientation:portrait){body.needs-landscape #rotateHint{display:flex}}
+
+/* ---------- Modal + toast ---------- */
+.modal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:calc(12px + var(--sat)) calc(12px + var(--sar)) calc(12px + var(--sab)) calc(12px + var(--sal))}
+.sheet{background:#1a1916;border:1px solid var(--line);border-radius:22px;padding:22px;width:min(480px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+.sheet h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:0 0 6px;line-height:1.1}
+.sheet p{color:var(--mute);line-height:1.5;margin:0 0 16px;font-size:15px}
+.sheet .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.sheet label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
+.sheet input[type=text],.sheet textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:11px 13px;font-size:16px;outline:none}
+.sheet input:focus,.sheet textarea:focus{border-color:rgba(224,168,74,.6)}
+.sheet textarea{min-height:90px;resize:vertical}
+.sheet .seg{display:inline-flex}
+.preview{width:100%;max-height:38vh;object-fit:contain;border-radius:12px;background:#000;display:block;margin:6px 0 4px}
+.pick{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;border:1px dashed rgba(243,239,230,.3);border-radius:16px;padding:26px;color:var(--mute);text-align:center;cursor:pointer}
+.pick b{color:var(--ink);font-size:16px}
+.qr{background:#fff;padding:14px;border-radius:14px;display:inline-block;margin:4px 0 6px}
+.qr img,.qr canvas{display:block}
+.url{font-size:12.5px;color:var(--mute);word-break:break-all;background:rgba(255,255,255,.04);padding:8px 10px;border-radius:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.steps div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;line-height:1.35;color:var(--mute)}
+.steps b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.cue{display:flex;gap:10px;align-items:center;background:rgba(224,168,74,.1);border:1px solid rgba(224,168,74,.3);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;margin:10px 0 0}
+.cue svg{flex:none;width:26px;height:26px}
+.langs{display:flex;gap:6px;flex-wrap:wrap}
+.langs button{height:30px;min-width:38px;padding:0 9px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--mute)}
+.langs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.note{font-size:12.5px;color:var(--mute);font-style:italic}
+@media (orientation:landscape) and (max-height:500px){
+  .sheet{padding:16px 18px}
+  .sheet h2{font-size:22px}
+  .preview{max-height:30vh}
+  .sheet.wide{width:min(760px,100%)}
+  .entry{display:grid;grid-template-columns:40% 1fr;gap:16px;align-items:start}
+  .entry .preview{max-height:calc(100vh - 80px);margin:0}
+  .entry .steps div{padding:7px 8px;font-size:12px}
+  .entry .steps b{font-size:12.5px}
+  .entry .row{margin-top:10px}
+}
+#toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%) translateY(20px);opacity:0;z-index:60;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+body.needs-landscape #toast{bottom:auto;top:calc(62px + var(--sat))}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME (beheer) ================= -->
+<main id="home">
+  <div class="eyebrow">Prototype · v0.3</div>
+  <h1>Buitenmuseum</h1>
+  <p class="lead">Sta op het punt, houd je telefoon liggend en zie de stad van toen precies over de stad van nu.</p>
+  <button class="btn accent" id="btnNew">+ Nieuw punt vastleggen</button>
+  <div class="list" id="list"></div>
+  <div class="foot">
+    <button class="btn ghost small" id="btnExport">Exporteer punten</button>
+    <button class="btn ghost small" id="btnImport">Importeer</button>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+    <div class="setting">
+      <span class="lbl">Speling bij uitlijnen</span>
+      <div class="seg" id="spelingSeg"><button data-sp="ruim">Ruim</button><button data-sp="normaal">Normaal</button><button data-sp="precies">Precies</button></div>
+    </div>
+    <div class="setting">
+      <span class="lbl">Testinfo in beeld (graden, licht)</span>
+      <div class="seg" id="dbgSeg"><button data-dbg="0">Uit</button><button data-dbg="1">Aan</button></div>
+    </div>
+    <p>Punten worden in dit prototype alleen in deze browser op dit toestel bewaard. Met exporteren/importeren zet je ze over naar een ander toestel.</p>
+  </div>
+</main>
+
+<!-- ================= STAGE (camera) ================= -->
+<section id="stage" class="hidden" aria-label="Camera">
+  <video id="video" playsinline muted autoplay></video>
+  <img id="nowImg" class="hidden" alt="">
+  <canvas id="freeze" class="hidden"></canvas>
+  <div id="photoLayer"><img id="photo" alt=""></div>
+  <div id="wipeLine" class="hidden"></div>
+  <div class="grid3 hidden" id="grid"></div>
+  <div class="level hidden" id="level"></div>
+
+  <div id="guide" class="hidden" aria-hidden="true">
+    <div id="finder"><i></i><i></i><i></i><i></i></div>
+    <div id="frame"><span class="tag" id="frameTag">Toen</span></div>
+    <div class="ar" id="arL"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="ar" id="arR"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="ar" id="arU"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="ar" id="arD"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="ar" id="arRot"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></span></div>
+  </div>
+
+  <div id="story" class="hidden"><div class="st" id="storyTitle"></div><div class="sl" id="storyLine"></div></div>
+  <div id="dbg" class="readout hidden"></div>
+
+  <div class="hud top">
+    <button class="round" id="btnClose" aria-label="Terug">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="chip" id="chip">…</div>
+    <button class="round hidden" id="btnNight" aria-label="Daglichtbeeld">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    </button>
+    <button class="round" id="btnInfo" aria-label="Over deze plek">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>
+    </button>
+  </div>
+
+  <!-- vastleggen: live -->
+  <div class="hud bottom" id="barCalLive">
+    <div class="panel">
+      <span class="lbl">Nu</span><input type="range" id="opCal" min="0" max="1" step="0.01" value="0.5" aria-label="Doorzichtigheid oude foto"><span class="lbl">Toen</span>
+    </div>
+  </div>
+  <div class="side" id="sideCal">
+    <button class="shutter" id="btnShutter" aria-label="Standpunt vastleggen"></button>
+    <div class="readout" id="readout">–</div>
+  </div>
+
+  <!-- vastleggen: uitlijnen -->
+  <div class="hud bottom hidden" id="barCalAdjust">
+    <div class="panel">
+      <span class="lbl">Nu</span><input type="range" id="opAdj" min="0" max="1" step="0.01" value="0.5" aria-label="Doorzichtigheid oude foto"><span class="lbl">Toen</span>
+      <span class="sep"></span>
+      <button class="btn ghost small" id="btnRetake">Opnieuw</button>
+      <button class="btn ghost small" id="btnReset">Reset</button>
+      <button class="btn small" id="btnNext">Volgende</button>
+    </div>
+  </div>
+
+  <!-- bezoeker -->
+  <div class="hud bottom hidden" id="barView">
+    <div class="panel" style="padding-left:8px">
+      <div class="seg" id="vmSeg">
+        <button data-vm="half" class="on">Half</button>
+        <button data-vm="full">Toen</button>
+        <button data-vm="wipe">Schuif</button>
+      </div>
+      <button class="play" id="btnPlay" aria-label="Speel af">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+<div id="rotateHint">
+  <svg viewBox="0 0 64 64" fill="none" stroke="#f3efe6" stroke-width="2.5"><rect x="20" y="6" width="24" height="52" rx="5"/><path d="M29 50h6"/></svg>
+  <p id="rhTitle">Draai je telefoon liggend</p>
+  <small id="rhSub">Het museum werkt in landschapsmodus</small>
+</div>
+
+<div class="modal hidden" id="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+<input type="file" id="photoFile" accept="image/*" class="hidden">
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const DEG = Math.PI / 180;
+const HFOV = 62;   // geschatte horizontale beeldhoek hoofdcamera, liggend (graden)
+
+/* ================= instellingen ================= */
+// Speling in graden. Binnen de marge is het 'goed' (groen kader). Daarna mag je 1,5x zo ver
+// afwijken voordat het weer loslaat, en moet je een halve seconde buiten de marge zijn.
+const LEVELS = {
+  ruim:    { h:20, p:8, r:10 },
+  normaal: { h:12, p:5, r:6  },
+  precies: { h:7,  p:3, r:3  }
+};
+const HOLD = 1.5, ENTER_MS = 150, LEAVE_MS = 500;
+const GHOST = 0.45;       // oude foto tijdens het zoeken
+const KEY = 'buitenmuseum.points.v1', KEY_SP = 'buitenmuseum.speling', KEY_LANG = 'buitenmuseum.lang', KEY_DBG = 'buitenmuseum.debug';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let speling = LEVELS[lsGet(KEY_SP)] ? lsGet(KEY_SP) : 'ruim';
+let debug = lsGet(KEY_DBG) === '1';
+
+/* ================= talen (bezoekerskant) ================= */
+const LANGS = {
+  nl:{ label:'NL', tts:'nl-NL' }, en:{ label:'EN', tts:'en-GB' }, de:{ label:'DE', tts:'de-DE' },
+  fr:{ label:'FR', tts:'fr-FR' }, es:{ label:'ES', tts:'es-ES' }
+};
+const STR = {
+  nl:{ start:'Start', all:'Alle punten', s1:'Sta op de tegel', s1b:'daar stond de fotograaf', s2:'Telefoon liggend', s2b:'op ooghoogte',
+       s3:'Kader wordt groen', s3b:'druk dan op ▶', look:'Kijk richting {d}', aimAt:', naar {a}',
+       dirs:['noord','noordoost','oost','zuidoost','zuid','zuidwest','west','noordwest'],
+       mv:{ tpl:'{p}', left:'naar links', right:'naar rechts', up:'omhoog', down:'omlaag', and:'en' },
+       level:'Houd je telefoon recht', flip:'Draai je telefoon andersom', found:'Precies goed! Druk op ▶',
+       wait:'Even geduld… bewegingssensor start', eye:'Leg de oude foto op het oog over het beeld',
+       info:'Over deze plek', listen:'Luister', stop:'Stop', cont:'Verder kijken', noStory:'Nog geen verhaal toegevoegd.', source:'Bron',
+       day:'Daglichtbeeld', live:'Live camera', dayChip:'Daglichtbeeld · je hoeft niet te richten', dark:'Te donker voor de camera: je ziet nu het daglichtbeeld',
+       half:'Half', full:'Toen', wipe:'Schuif', then:'Toen', rotate:'Draai je telefoon liggend', rotateSub:'Het museum werkt in landschapsmodus',
+       only:'(alleen in het Nederlands)', camT:'Camera niet beschikbaar', camP:'Geef de browser toestemming voor de camera en probeer het opnieuw.', back:'Terug' },
+  en:{ start:'Start', all:'All points', s1:'Stand on the tile', s1b:'where the photographer stood', s2:'Hold phone sideways', s2b:'at eye level',
+       s3:'Frame turns green', s3b:'then press ▶', look:'Look {d}', aimAt:', towards {a}',
+       dirs:['north','northeast','east','southeast','south','southwest','west','northwest'],
+       mv:{ tpl:'Move {p}', left:'left', right:'right', up:'up', down:'down', and:'and' },
+       level:'Hold your phone straight', flip:'Turn your phone the other way round', found:'Spot on! Press ▶',
+       wait:'One moment… starting motion sensor', eye:'Line up the old photo by eye',
+       info:'About this place', listen:'Listen', stop:'Stop', cont:'Keep looking', noStory:'No story added yet.', source:'Source',
+       day:'Daylight view', live:'Live camera', dayChip:'Daylight view · no need to aim', dark:'Too dark for the camera: showing the daylight view',
+       half:'Half', full:'Then', wipe:'Slide', then:'Then', rotate:'Turn your phone sideways', rotateSub:'The museum works in landscape mode',
+       only:'(available in Dutch only)', camT:'Camera not available', camP:'Allow camera access in your browser settings and try again.', back:'Back' },
+  de:{ start:'Start', all:'Alle Punkte', s1:'Auf die Fliese stellen', s1b:'dort stand der Fotograf', s2:'Handy quer halten', s2b:'auf Augenhöhe',
+       s3:'Rahmen wird grün', s3b:'dann ▶ drücken', look:'Schau nach {d}', aimAt:', Richtung {a}',
+       dirs:['Norden','Nordosten','Osten','Südosten','Süden','Südwesten','Westen','Nordwesten'],
+       mv:{ tpl:'{p}', left:'nach links', right:'nach rechts', up:'nach oben', down:'nach unten', and:'und' },
+       level:'Halte dein Handy gerade', flip:'Dreh dein Handy andersherum', found:'Genau richtig! Drück ▶',
+       wait:'Einen Moment… Bewegungssensor startet', eye:'Richte das alte Foto nach Augenmaß aus',
+       info:'Über diesen Ort', listen:'Anhören', stop:'Stopp', cont:'Weiterschauen', noStory:'Noch keine Geschichte hinzugefügt.', source:'Quelle',
+       day:'Tageslichtbild', live:'Live-Kamera', dayChip:'Tageslichtbild · kein Ausrichten nötig', dark:'Zu dunkel für die Kamera: Tageslichtbild wird gezeigt',
+       half:'Halb', full:'Damals', wipe:'Schieben', then:'Damals', rotate:'Dreh dein Handy quer', rotateSub:'Das Museum funktioniert im Querformat',
+       only:'(nur auf Niederländisch)', camT:'Kamera nicht verfügbar', camP:'Erlaube den Kamerazugriff in den Browsereinstellungen und versuche es erneut.', back:'Zurück' },
+  fr:{ start:'Commencer', all:'Tous les points', s1:'Placez-vous sur la dalle', s1b:'là où était le photographe', s2:'Téléphone à l’horizontale', s2b:'à hauteur des yeux',
+       s3:'Le cadre devient vert', s3b:'appuyez alors sur ▶', look:'Regardez vers {d}', aimAt:', vers {a}',
+       dirs:['le nord','le nord-est','l’est','le sud-est','le sud','le sud-ouest','l’ouest','le nord-ouest'],
+       mv:{ tpl:'{p}', left:'vers la gauche', right:'vers la droite', up:'vers le haut', down:'vers le bas', and:'et' },
+       level:'Tenez votre téléphone droit', flip:'Retournez votre téléphone', found:'Parfait ! Appuyez sur ▶',
+       wait:'Un instant… démarrage du capteur', eye:'Alignez l’ancienne photo à l’œil',
+       info:'À propos de ce lieu', listen:'Écouter', stop:'Arrêter', cont:'Continuer', noStory:'Pas encore d’histoire.', source:'Source',
+       day:'Vue de jour', live:'Caméra en direct', dayChip:'Vue de jour · pas besoin de viser', dark:'Trop sombre pour la caméra : vue de jour affichée',
+       half:'Moitié', full:'Autrefois', wipe:'Glisser', then:'Autrefois', rotate:'Tournez votre téléphone', rotateSub:'Le musée fonctionne en mode paysage',
+       only:'(uniquement en néerlandais)', camT:'Caméra indisponible', camP:'Autorisez l’accès à la caméra dans les réglages du navigateur et réessayez.', back:'Retour' },
+  es:{ start:'Empezar', all:'Todos los puntos', s1:'Ponte sobre la baldosa', s1b:'donde estaba el fotógrafo', s2:'Móvil en horizontal', s2b:'a la altura de los ojos',
+       s3:'El marco se pone verde', s3b:'pulsa entonces ▶', look:'Mira hacia el {d}', aimAt:', hacia {a}',
+       dirs:['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'],
+       mv:{ tpl:'{p}', left:'hacia la izquierda', right:'hacia la derecha', up:'hacia arriba', down:'hacia abajo', and:'y' },
+       level:'Mantén el móvil recto', flip:'Gira el móvil al revés', found:'¡Perfecto! Pulsa ▶',
+       wait:'Un momento… iniciando el sensor', eye:'Alinea la foto antigua a ojo',
+       info:'Sobre este lugar', listen:'Escuchar', stop:'Parar', cont:'Seguir mirando', noStory:'Aún no hay historia.', source:'Fuente',
+       day:'Vista de día', live:'Cámara en directo', dayChip:'Vista de día · no hace falta apuntar', dark:'Demasiado oscuro para la cámara: se muestra la vista de día',
+       half:'Medio', full:'Antes', wipe:'Deslizar', then:'Antes', rotate:'Gira el móvil en horizontal', rotateSub:'El museo funciona en modo horizontal',
+       only:'(solo en neerlandés)', camT:'Cámara no disponible', camP:'Permite el acceso a la cámara en los ajustes del navegador e inténtalo de nuevo.', back:'Volver' }
+};
+let lang = (() => {
+  const s = lsGet(KEY_LANG); if (s && LANGS[s]) return s;
+  const n = (navigator.language || 'nl').slice(0, 2).toLowerCase();
+  return LANGS[n] ? n : 'en';
+})();
+const t = (k, vars) => {
+  let s = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.nl[k];
+  if (vars && typeof s === 'string') for (const [a, b] of Object.entries(vars)) s = s.replace('{' + a + '}', b);
+  return s;
+};
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+// tekst van een punt in de gekozen taal, anders Nederlands
+function field(p, key){
+  const tr = p && p.i18n && p.i18n[lang] && p.i18n[lang][key];
+  return tr ? { v: tr, l: lang } : { v: (p && p[key]) || '', l: 'nl' };
+}
+function moveMsg(h, v){
+  const M = t('mv'), parts = [];
+  if (h) parts.push(h < 0 ? M.left : M.right);
+  if (v) parts.push(v < 0 ? M.up : M.down);
+  return cap(M.tpl.replace('{p}', parts.join(' ' + M.and + ' ')));
+}
+function langChips(){
+  return `<div class="langs">${Object.keys(LANGS).map(l => `<button data-act="lang" data-l="${l}" class="${l === lang ? 'on' : ''}">${LANGS[l].label}</button>`).join('')}</div>`;
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  $('#rhTitle').textContent = t('rotate'); $('#rhSub').textContent = t('rotateSub');
+  document.querySelectorAll('#vmSeg button').forEach(b => b.textContent = t(b.dataset.vm));
+  $('#frameTag').textContent = current && current.year ? current.year : t('then');
+  $('#btnInfo').setAttribute('aria-label', t('info'));
+}
+
+/* ================= helpers ================= */
+const norm = a => ((a % 360) + 360) % 360;
+const adiff = (a, b) => ((a - b + 540) % 360) - 180;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const beyond = (d, tol) => Math.sign(d) * Math.max(0, Math.abs(d) - tol);   // alleen afwijking búiten de speling telt
+let toastT;
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+
+/* ================= opslag (IndexedDB, met terugval) ================= */
+let POINTS = [];
+let dbp = null;
+function idbOpen(){
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) return rej(new Error('noidb'));
+    const r = indexedDB.open('buitenmuseum', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(k){ const db = await dbp; return new Promise((res, rej) => { const q = db.transaction('kv', 'readonly').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+async function idbSet(k, v){ const db = await dbp; return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
+async function initStore(){
+  try {
+    dbp = idbOpen();
+    const v = await idbGet('points');
+    if (Array.isArray(v)) { POINTS = v; return; }
+  } catch (e) { dbp = null; }
+  try { const raw = localStorage.getItem(KEY); if (raw) { POINTS = JSON.parse(raw); if (dbp) persist(); } } catch (e) {}
+}
+async function persist(){
+  try { if (!dbp) throw new Error('noidb'); await idbSet('points', POINTS); }
+  catch (e) {
+    try { localStorage.setItem(KEY, JSON.stringify(POINTS)); }
+    catch (e2) { toast('Opslaan mislukt: opslag vol'); }
+  }
+}
+const loadPoints = () => POINTS;
+function savePoints(list){ POINTS = list; persist(); return true; }
+
+/* ================= sensoren ================= */
+const S = { has:false, hasHeading:false, heading:null, pitch:0, roll:0, abs:false, iosOff:null, angle:0, last:0 };
+function screenAngle(){
+  let a = 0;
+  if (screen.orientation && typeof screen.orientation.angle === 'number') a = screen.orientation.angle;
+  else if (typeof window.orientation === 'number') a = window.orientation;
+  return norm(a);
+}
+// Rotatiematrix volgens W3C DeviceOrientation (Z-X'-Y''); aarde: x=oost, y=noord, z=omhoog.
+function orientFrom(alpha, beta, gamma, ang){
+  const a = alpha * DEG, b = beta * DEG, g = gamma * DEG;
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cg = Math.cos(g), sg = Math.sin(g);
+  const c1 = [ca*cg - sa*sb*sg, sa*cg + ca*sb*sg, -cb*sg];
+  const c2 = [-sa*cb, ca*cb, sb];
+  const c3 = [ca*sg + sa*sb*cg, sa*sg - ca*sb*cg, cb*cg];
+  const d = [-c3[0], -c3[1], -c3[2]];                        // kijkrichting achtercamera
+  const tt = ang * DEG, st = Math.sin(tt), ct = Math.cos(tt);
+  const upZ = st*c1[2] + ct*c2[2], rightZ = ct*c1[2] - st*c2[2];
+  return { heading: norm(Math.atan2(d[0], d[1]) / DEG), pitch: Math.asin(clamp(d[2], -1, 1)) / DEG, roll: Math.atan2(-rightZ, upZ) / DEG };
+}
+function onOrient(e){
+  if (e.beta == null || e.gamma == null) return;
+  const ang = screenAngle();
+  if (ang !== S.angle) S.iosOff = null;
+  const o = orientFrom(e.alpha || 0, e.beta, e.gamma, ang);
+  let h = o.heading, abs = false, hasH = e.alpha != null;
+  if (typeof e.webkitCompassHeading === 'number' && isFinite(e.webkitCompassHeading) && e.webkitCompassHeading >= 0){
+    const off = adiff(e.webkitCompassHeading, o.heading);   // iOS: gyroscoop voor rust, kompas als referentie
+    S.iosOff = (S.iosOff == null) ? off : S.iosOff + 0.04 * adiff(off, S.iosOff);
+    h = norm(o.heading + S.iosOff); abs = true; hasH = true;
+  } else if (e.type === 'deviceorientationabsolute' || e.absolute === true) abs = true;
+  const k = 0.25;
+  S.heading = (S.heading == null) ? h : norm(S.heading + k * adiff(h, S.heading));
+  S.pitch = S.has ? S.pitch + k * (o.pitch - S.pitch) : o.pitch;
+  S.roll = S.has ? S.roll + k * adiff(o.roll, S.roll) : o.roll;
+  S.abs = abs; S.hasHeading = hasH; S.angle = ang; S.has = true; S.last = performance.now();
+}
+const sensorsFresh = () => S.has && performance.now() - S.last < 1500;
+let sensorsOn = false;
+function startSensors(){
+  if (sensorsOn) return; sensorsOn = true;
+  if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrient);
+  else window.addEventListener('deviceorientation', onOrient);
+}
+async function requestMotion(){
+  let granted = true;
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function')
+      granted = (await DeviceOrientationEvent.requestPermission()) === 'granted';
+  } catch (e) { granted = false; }
+  startSensors();   // altijd luisteren; zonder toestemming komen er gewoon geen metingen
+  return granted;
+}
+
+/* ================= camera ================= */
+let stream = null;
+async function startCamera(){
+  if (stream) return;
+  if (!window.isSecureContext) throw new Error('insecure');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+  stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+  const v = $('#video'); v.srcObject = stream;
+  try { await v.play(); } catch (e) {}
+}
+function stopCamera(){ if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } $('#video').srcObject = null; }
+let wakeLock = null;
+async function keepAwake(){ try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+function releaseAwake(){ try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+async function goLandscape(){
+  try { const el = document.documentElement; if (el.requestFullscreen && !document.fullscreenElement) await el.requestFullscreen({ navigationUI:'hide' }); } catch (e) {}
+  try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
+}
+function leaveLandscape(){
+  try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {}
+  try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+}
+// Alles in één tik starten: iOS wil de bewegingstoestemming direct vanuit een tik.
+async function startDevices(){
+  const pm = requestMotion(), pl = goLandscape(), pc = startCamera();
+  const [motion] = await Promise.all([pm, pc.then(() => true), pl]);
+  keepAwake();
+  return motion;
+}
+function cameraError(err){
+  const insecure = err && err.message === 'insecure';
+  openSheet(`<h2>${esc(insecure ? 'Camera niet beschikbaar' : t('camT'))}</h2>
+    <p>${esc(insecure ? 'De camera werkt alleen via een beveiligde verbinding (https). Zet dit bestand op een https-adres en open het daar.' : t('camP'))}</p>
+    <div class="row"><button class="btn" data-act="home">${esc(t('back'))}</button></div>`);
+}
+
+// lichtmeter: is het te donker voor een bruikbaar camerabeeld?
+const lm = document.createElement('canvas'); lm.width = 32; lm.height = 18;
+const lmx = lm.getContext('2d', { willReadFrequently:true });
+let lastLight = 0, luma = null, darkCount = 0;
+function meterLight(now){
+  if (now - lastLight < 700) return; lastLight = now;
+  const v = $('#video'); if (!v.videoWidth || night) return;
+  try {
+    lmx.drawImage(v, 0, 0, 32, 18);
+    const d = lmx.getImageData(0, 0, 32, 18).data; let s = 0;
+    for (let i = 0; i < d.length; i += 4) s += 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    luma = s / (d.length / 4);
+  } catch (e) { return; }
+  if (!nightManual && current && current.nowImg){
+    darkCount = luma < 38 ? darkCount + 1 : 0;
+    if (darkCount >= 3){ setNight(true); toast(t('dark')); }
+  }
+}
+
+/* ================= foto + kader ================= */
+const P = { nw:0, nh:0, bw:0, bh:0 };
+let T = { x:0, y:0, s:1, r:0 };
+function layoutPhoto(){
+  if (!P.nw) return;
+  const vw = innerWidth, vh = innerHeight, s = Math.min(vw / P.nw, vh / P.nh);
+  P.bw = P.nw * s; P.bh = P.nh * s;
+  for (const el of [$('#photo'), $('#frame')]){
+    el.style.width = P.bw + 'px'; el.style.height = P.bh + 'px';
+    el.style.left = (vw - P.bw) / 2 + 'px'; el.style.top = (vh - P.bh) / 2 + 'px';
+  }
+  layoutGuide();
+}
+function setPhoto(src){
+  return new Promise(res => {
+    const img = $('#photo');
+    img.onload = () => { P.nw = img.naturalWidth; P.nh = img.naturalHeight; layoutPhoto(); res(); };
+    img.onerror = () => res();
+    img.src = src;
+  });
+}
+function applyTransform(offX = 0, offY = 0, rotD = 0){
+  const vw = innerWidth, vh = innerHeight;
+  const tf = `translate(${offX}px,${offY}px) rotate(${rotD}deg) translate(${T.x * vw}px,${T.y * vh}px) rotate(${T.r}deg) scale(${T.s})`;
+  $('#photo').style.transform = tf;
+  const f = $('#frame'); f.style.transform = tf; f.style.setProperty('--s', T.s);
+}
+// Het zoekerkader = waar de oude foto hoort te staan (binnen het scherm gehouden).
+const G = { x1:0, y1:0, x2:0, y2:0 };
+function layoutGuide(){
+  if (!P.bw) return;
+  const vw = innerWidth, vh = innerHeight, m = 10;
+  const w = P.bw * T.s, h = P.bh * T.s, cx = vw / 2 + T.x * vw, cy = vh / 2 + T.y * vh;
+  G.x1 = Math.max(m, cx - w / 2); G.y1 = Math.max(m, cy - h / 2);
+  G.x2 = Math.min(vw - m, cx + w / 2); G.y2 = Math.min(vh - m, cy + h / 2);
+  const f = $('#finder');
+  f.style.left = G.x1 + 'px'; f.style.top = G.y1 + 'px';
+  f.style.width = (G.x2 - G.x1) + 'px'; f.style.height = (G.y2 - G.y1) + 'px';
+  // pijlen binnen het kader, vrij van de knoppenbalken boven en onder
+  const midX = (G.x1 + G.x2) / 2, midY = clamp((G.y1 + G.y2) / 2, 90, vh - 100);
+  const yTop = Math.max(G.y1 + 40, 92), yBot = Math.min(G.y2 - 40, vh - 104);
+  const put = (id, x, y) => { const el = $(id); el.style.left = x + 'px'; el.style.top = y + 'px'; };
+  put('#arL', G.x1 + 44, midY); put('#arR', G.x2 - 44, midY);
+  put('#arU', midX, yTop); put('#arD', midX, yBot);
+  put('#arRot', G.x2 - 44, yTop);
+}
+
+function compressImage(file, max = 1400, q = 0.82){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+    img.src = url;
+  });
+}
+function canvasJpeg(c, max = 1280, q = 0.76){
+  const s = Math.min(1, max / Math.max(c.width, c.height));
+  if (s === 1) return c.toDataURL('image/jpeg', q);
+  const o = document.createElement('canvas'); o.width = Math.round(c.width * s); o.height = Math.round(c.height * s);
+  o.getContext('2d').drawImage(c, 0, 0, o.width, o.height); return o.toDataURL('image/jpeg', q);
+}
+
+/* ================= modal ================= */
+let sheetCtx = null;
+function openSheet(html, cls = '', ctx = null){
+  const s = $('#sheet'); s.className = 'sheet ' + cls; s.innerHTML = html; s.scrollTop = 0;
+  sheetCtx = ctx; $('#modal').classList.remove('hidden');
+}
+function closeSheet(){ $('#modal').classList.add('hidden'); $('#sheet').innerHTML = ''; sheetCtx = null; }
+
+/* ================= toestand ================= */
+let mode = 'home';      // home | cal-live | cal-adjust | view
+let draft = null, current = null;
+let vm = 'half';        // half | full | wipe
+let wipeX = 0.5;
+let locked = false, inSince = 0, outSince = 0, viewStart = 0;
+let night = false, nightManual = false;
+const D = { x:0, y:0, r:0, vis:0 };
+
+function setMode(m){
+  mode = m;
+  const stage = m !== 'home';
+  $('#home').classList.toggle('hidden', stage);
+  $('#stage').classList.toggle('hidden', !stage);
+  document.body.classList.toggle('needs-landscape', stage);
+  $('#barCalLive').classList.toggle('hidden', m !== 'cal-live');
+  $('#sideCal').classList.toggle('hidden', m !== 'cal-live');
+  $('#barCalAdjust').classList.toggle('hidden', m !== 'cal-adjust');
+  $('#barView').classList.toggle('hidden', m !== 'view');
+  $('#btnInfo').classList.toggle('hidden', m !== 'view');
+  $('#btnNight').classList.add('hidden');
+  $('#freeze').classList.toggle('hidden', m !== 'cal-adjust');
+  $('#grid').classList.toggle('hidden', m !== 'cal-live');
+  $('#level').classList.toggle('hidden', m !== 'cal-live');
+  $('#guide').classList.add('hidden');
+  $('#story').classList.add('hidden');
+  $('#dbg').classList.toggle('hidden', !(m === 'view' && debug));
+  $('#wipeLine').classList.add('hidden');
+  $('#photoLayer').style.clipPath = '';
+  $('#video').classList.remove('hidden'); $('#nowImg').classList.add('hidden');
+  if (m === 'cal-live') $('#chip').innerHTML = 'Stap 1 · Ga op het standpunt staan en leg de oude foto over het beeld';
+  if (m === 'cal-adjust') $('#chip').innerHTML = 'Stap 2 · Schuif en knijp de foto tot hij past';
+  $('#chip').classList.remove('ok');
+}
+function goHome(){
+  stopStory(); closeSheet(); stopCamera(); releaseAwake(); leaveLandscape();
+  draft = null; current = null;
+  if (location.search) history.replaceState(null, '', location.pathname);
+  setMode('home'); renderList();
+}
+
+/* ================= overzicht (beheer) ================= */
+function langsOf(p){ return ['NL', ...Object.keys(p.i18n || {}).filter(l => p.i18n[l] && (p.i18n[l].name || p.i18n[l].text)).map(l => LANGS[l] ? LANGS[l].label : l.toUpperCase())]; }
+function renderList(){
+  const pts = loadPoints(), el = $('#list');
+  if (!pts.length){
+    el.innerHTML = `<div class="empty"><b>Nog geen punten.</b><br>Kies een oude foto, ga op het standpunt staan en leg het punt vast.<br><br>
+      <b>Thuis testen?</b> Maak nu met je telefoon een foto van je kamer, gebruik die als 'oude foto', zet daarna iets anders neer en kom terug op dezelfde plek.</div>`;
+    return;
+  }
+  el.innerHTML = pts.map(p => `
+    <div class="card">
+      <img src="${p.img}" alt="">
+      <div>
+        <h3>${esc(p.name || 'Naamloos punt')}</h3>
+        <div class="meta">${p.year ? esc(p.year) + ' · ' : ''}${langsOf(p).join(' ')}${p.orient && p.orient.ok ? '' : ' · zonder sensoren'}${p.nowImg ? '' : ' · geen daglichtbeeld'}</div>
+        <div class="actions">
+          <button class="btn small" data-act="entry" data-id="${p.id}">Bekijk</button>
+          <button class="btn ghost small" data-act="edit" data-id="${p.id}">Bewerk</button>
+          <button class="btn ghost small" data-act="qr" data-id="${p.id}">QR</button>
+          <button class="btn ghost small" data-act="del" data-id="${p.id}">Verwijder</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// Bewerken met vertalingen per taal
+let edit = null;
+const hasTr = d => d && (d.name || d.text || d.aim);
+function openEdit(id){
+  const p = loadPoints().find(x => x.id === id); if (!p) return;
+  edit = { id, tab:'nl', year:p.year || '', source:p.source || '', data:{ nl:{ name:p.name || '', aim:p.aim || '', text:p.text || '' } } };
+  Object.keys(LANGS).forEach(l => { if (l !== 'nl') edit.data[l] = { name:'', aim:'', text:'', ...((p.i18n && p.i18n[l]) || {}) }; });
+  renderEdit();
+}
+function renderEdit(){
+  const d = edit.data[edit.tab], isNl = edit.tab === 'nl';
+  openSheet(`
+    <h2>Bewerk punt</h2>
+    <div class="seg" style="margin:8px 0 2px">${Object.keys(LANGS).map(l => `<button data-act="etab" data-l="${l}" class="${l === edit.tab ? 'on' : ''}">${LANGS[l].label}${l !== 'nl' && hasTr(edit.data[l]) ? ' •' : ''}</button>`).join('')}</div>
+    ${isNl ? `<div class="two">
+        <div><label for="eYear">Jaar</label><input type="text" id="eYear" value="${esc(edit.year)}" inputmode="numeric" autocomplete="off"></div>
+        <div><label for="eSrc">Bron</label><input type="text" id="eSrc" value="${esc(edit.source)}" autocomplete="off"></div></div>`
+      : `<p class="note" style="margin:10px 0 0">Vertaling ${LANGS[edit.tab].label}. Laat leeg om de Nederlandse tekst te tonen.</p>`}
+    <label for="eName">Naam</label><input type="text" id="eName" value="${esc(d.name)}" placeholder="${esc(isNl ? '' : edit.data.nl.name)}" autocomplete="off">
+    <label for="eAim">Richtpunt</label><input type="text" id="eAim" value="${esc(d.aim)}" placeholder="${esc(isNl ? 'Bijv. de toren van de Laurenskerk' : edit.data.nl.aim)}" autocomplete="off">
+    <label for="eText">Verhaal (wordt ook voorgelezen)</label><textarea id="eText" placeholder="${esc(isNl ? 'Wat zie je hier, en wat is er veranderd?' : '')}">${esc(d.text)}</textarea>
+    <div class="row"><button class="btn accent" data-act="esave">Opslaan</button><button class="btn ghost" data-act="close">Annuleer</button></div>`, 'wide');
+}
+function grabEdit(){
+  const d = edit.data[edit.tab];
+  d.name = $('#eName').value.trim(); d.aim = $('#eAim').value.trim(); d.text = $('#eText').value.trim();
+  if (edit.tab === 'nl'){ edit.year = $('#eYear').value.trim(); edit.source = $('#eSrc').value.trim(); }
+}
+function saveEdit(){
+  grabEdit();
+  const list = loadPoints().map(p => {
+    if (p.id !== edit.id) return p;
+    const i18n = {};
+    Object.keys(LANGS).forEach(l => { if (l !== 'nl' && hasTr(edit.data[l])) i18n[l] = { ...edit.data[l] }; });
+    return { ...p, ...edit.data.nl, year: edit.year, source: edit.source, i18n };
+  });
+  savePoints(list); closeSheet(); renderList(); toast('Punt bijgewerkt'); edit = null;
+}
+
+/* ================= nieuw punt vastleggen ================= */
+function openNew(){
+  openSheet(`<h2>Nieuw punt</h2>
+    <p>Kies de oude foto. Daarna ga je op de plek staan waar de fotograaf stond.</p>
+    <div class="pick" data-act="pick"><b>Kies oude foto</b><span>uit je foto's of bestanden</span></div>
+    <div class="row"><button class="btn ghost" data-act="close">Annuleer</button></div>`);
+}
+async function onPhotoPicked(file){
+  if (!file) return;
+  let dataUrl;
+  try { dataUrl = await compressImage(file); } catch (e) { toast('Deze foto kan niet worden gelezen'); return; }
+  draft = { id: uid(), img: dataUrl };
+  openSheet(`<h2>Nieuw punt</h2>
+    <img class="preview" src="${dataUrl}" alt="">
+    <p style="margin-top:10px">Ga op het standpunt staan, houd je telefoon liggend en tik op start.</p>
+    <div class="row"><button class="btn accent" data-act="startcal">Start camera</button><button class="btn ghost" data-act="pick">Andere foto</button></div>`);
+}
+async function startCalibration(){
+  const dev = startDevices();   // eerst, nog binnen de tik (iOS-toestemming)
+  closeSheet();
+  T = { x:0, y:0, s:1, r:0 };
+  await setPhoto(draft.img);
+  $('#photoLayer').style.opacity = $('#opCal').value;
+  setMode('cal-live');
+  try { await dev; } catch (e) { cameraError(e); }
+}
+const recent = [];
+function sample(){
+  if (!sensorsFresh()) return;
+  recent.push({ t: performance.now(), h: S.heading, p: S.pitch, r: S.roll });
+  while (recent.length && performance.now() - recent[0].t > 500) recent.shift();
+}
+function averagedOrient(){
+  if (!sensorsFresh() || !recent.length) return { ok:false };
+  let sx = 0, sy = 0, p = 0, rx = 0, ry = 0;
+  recent.forEach(o => { sx += Math.sin(o.h*DEG); sy += Math.cos(o.h*DEG); p += o.p; rx += Math.sin(o.r*DEG); ry += Math.cos(o.r*DEG); });
+  return { ok:true, heading: norm(Math.atan2(sx, sy) / DEG), pitch: p / recent.length, roll: Math.atan2(rx, ry) / DEG, abs: S.abs && S.hasHeading, angle: S.angle };
+}
+function freezeFrame(){
+  const v = $('#video'), c = $('#freeze');
+  const vw = innerWidth, vh = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+  c.width = Math.round(vw * dpr); c.height = Math.round(vh * dpr);
+  const ctx = c.getContext('2d'), w = v.videoWidth, h = v.videoHeight;
+  if (w && h){ const s = Math.max(c.width / w, c.height / h), dw = w * s, dh = h * s; ctx.drawImage(v, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh); }
+  else { ctx.fillStyle = '#1b1b19'; ctx.fillRect(0, 0, c.width, c.height); }
+}
+function onShutter(){
+  draft.orient = averagedOrient();
+  freezeFrame();
+  try { draft.nowImg = canvasJpeg($('#freeze')); } catch (e) { draft.nowImg = null; }   // daglichtbeeld voor de nachtmodus
+  $('#opAdj').value = $('#opCal').value;
+  $('#photoLayer').style.opacity = $('#opAdj').value;
+  setMode('cal-adjust');
+  if (!draft.orient.ok) toast('Geen bewegingssensor: punt wordt zonder uitlijnhulp bewaard');
+}
+function openSaveForm(){
+  openSheet(`<h2>Over deze plek</h2>
+    <label for="fName">Naam</label><input type="text" id="fName" placeholder="Bijv. Coolsingel, richting Stadhuis" autocomplete="off">
+    <div class="two">
+      <div><label for="fYear">Jaar</label><input type="text" id="fYear" placeholder="1938" inputmode="numeric" autocomplete="off"></div>
+      <div><label for="fSrc">Bron</label><input type="text" id="fSrc" placeholder="Stadsarchief Rotterdam" autocomplete="off"></div>
+    </div>
+    <label for="fAim">Richtpunt <span style="text-transform:none;letter-spacing:0">(waar kijkt de bezoeker naar?)</span></label><input type="text" id="fAim" placeholder="Bijv. de toren van de Laurenskerk" autocomplete="off">
+    <label for="fText">Verhaal (wordt ook voorgelezen)</label><textarea id="fText" placeholder="Wat zie je hier, en wat is er veranderd?"></textarea>
+    <p class="note" style="margin:8px 0 0">Vertalingen voeg je daarna toe via Bewerk.</p>
+    <div class="row"><button class="btn accent" data-act="save">Opslaan</button><button class="btn ghost" data-act="close">Terug</button></div>`, 'wide');
+}
+function saveDraft(){
+  const p = {
+    id: draft.id, img: draft.img, nowImg: draft.nowImg || null, created: Date.now(),
+    name: $('#fName').value.trim(), year: $('#fYear').value.trim(), source: $('#fSrc').value.trim(),
+    text: $('#fText').value.trim(), aim: $('#fAim').value.trim(), i18n: {},
+    t: { ...T }, orient: draft.orient
+  };
+  savePoints([p, ...loadPoints().filter(x => x.id !== p.id)]);
+  goHome(); toast('Punt opgeslagen');
+}
+
+/* ================= bezoeker ================= */
+function lookCue(p){
+  const o = p.orient || {};
+  const a = field(p, 'aim');
+  let s = '';
+  if (o.ok && o.abs) s = t('look', { d: '<b>' + esc(t('dirs')[Math.round(norm(o.heading) / 45) % 8]) + '</b>' });
+  if (a.v){
+    const at = t('aimAt', { a: '<b>' + esc(a.v) + '</b>' });
+    s = s ? s + at : cap(at.replace(/^,\s*/, ''));
+  }
+  if (!s) return '';
+  return `<div class="cue"><svg viewBox="0 0 24 24" fill="none" stroke="#e0a84a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>${s}</span></div>`;
+}
+function openEntry(p){
+  if (typeof p === 'string') p = loadPoints().find(x => x.id === p);
+  if (!p) return;
+  const nm = field(p, 'name');
+  openSheet(`
+    <div class="entry">
+      <img class="preview" src="${p.img}" alt="">
+      <div>
+        <div class="toprow"><div class="eyebrow" style="padding-top:8px">Buitenmuseum${p.year ? ' · ' + esc(p.year) : ''}</div>${langChips()}</div>
+        <h2 style="margin-top:8px">${esc(nm.v || 'Naamloos punt')}</h2>
+        ${lookCue(p)}
+        <div class="steps">
+          <div><b>1 · ${esc(t('s1'))}</b>${esc(t('s1b'))}</div>
+          <div><b>2 · ${esc(t('s2'))}</b>${esc(t('s2b'))}</div>
+          <div><b>3 · ${esc(t('s3'))}</b>${esc(t('s3b'))}</div>
+        </div>
+        <div class="row"><button class="btn accent" data-act="startview" data-id="${p.id}">${esc(t('start'))}</button><button class="btn ghost" data-act="home">${esc(t('all'))}</button></div>
+      </div>
+    </div>`, 'wide', { type:'entry', id:p.id });
+}
+async function startView(id){
+  const p = loadPoints().find(x => x.id === id); if (!p) return;
+  const dev = startDevices();   // eerst, nog binnen de tik (iOS-toestemming)
+  primeSpeech();
+  closeSheet();
+  current = p; T = { ...(p.t || { x:0, y:0, s:1, r:0 }) };
+  locked = false; inSince = outSince = 0; viewStart = performance.now();
+  night = false; nightManual = false; darkCount = 0;
+  D.x = D.y = D.r = 0; D.vis = 0;
+  await setPhoto(p.img);
+  setMode('view'); setVm('half'); applyLang();
+  $('#nowImg').src = p.nowImg || '';
+  $('#btnNight').classList.toggle('hidden', !p.nowImg);
+  $('#btnNight').classList.remove('on');
+  try { await dev; } catch (e) { cameraError(e); }
+}
+function setVm(m){
+  vm = m;
+  document.querySelectorAll('#vmSeg button').forEach(b => b.classList.toggle('on', b.dataset.vm === m));
+  $('#wipeLine').classList.toggle('hidden', m !== 'wipe');
+  if (m !== 'wipe') $('#photoLayer').style.clipPath = '';
+}
+function setNight(on, manual){
+  night = on; if (manual) nightManual = true;
+  $('#nowImg').classList.toggle('hidden', !on);
+  $('#video').classList.toggle('hidden', on);
+  $('#btnNight').classList.toggle('on', on);
+  $('#btnNight').setAttribute('aria-label', on ? t('live') : t('day'));
+}
+function openInfo(){
+  const p = current; if (!p) return;
+  const nm = field(p, 'name'), tx = field(p, 'text');
+  openSheet(`
+    <div class="toprow"><div class="eyebrow" style="padding-top:8px">${p.year ? esc(p.year) : esc(t('then'))}</div>${langChips()}</div>
+    <h2 style="margin-top:8px">${esc(nm.v || 'Naamloos punt')}</h2>
+    ${tx.v ? `<p>${esc(tx.v).replace(/\n/g, '<br>')}</p>${tx.l !== lang ? `<p class="note">${esc(t('only'))}</p>` : ''}` : `<p>${esc(t('noStory'))}</p>`}
+    ${p.source ? `<p style="font-size:13px">${esc(t('source'))}: ${esc(p.source)}</p>` : ''}
+    <div class="row"><button class="btn accent" data-act="playinfo">▶ ${esc(t('listen'))}</button><button class="btn ghost" data-act="close">${esc(t('cont'))}</button></div>`, '', { type:'info' });
+}
+
+/* ---------- verhaal: foto naar voren + vertellen + ondertitels ---------- */
+let VOICES = [];
+function loadVoices(){ try { VOICES = speechSynthesis.getVoices() || []; } catch (e) {} }
+if ('speechSynthesis' in window){ loadVoices(); try { speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {} }
+function pickVoice(l){
+  const code = LANGS[l].tts.toLowerCase();
+  const by = f => VOICES.find(v => v.lang && f(v.lang.toLowerCase().replace('_', '-')));
+  return by(x => x === code) || by(x => x.startsWith(l)) || null;
+}
+// iOS: spraak één keer 'aanzetten' tijdens een tik, zodat later voorlezen mag
+function primeSpeech(){ try { if (window.speechSynthesis && !primeSpeech.done){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); primeSpeech.done = true; } } catch (e) {} }
+function sentences(s){ return ((s || '').replace(/\s+/g, ' ').match(/[^.!?…]+[.!?…]*["'’”)\]]*\s*/g) || []).map(x => x.trim()).filter(Boolean); }
+let playing = false, utts = [], capTimer = null;
+function setPlayBtn(){
+  $('#btnPlay').innerHTML = playing
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  $('#btnPlay').setAttribute('aria-label', playing ? t('stop') : t('listen'));
+}
+function playStory(){
+  const p = current; if (!p) return;
+  stopStory();
+  const nm = field(p, 'name'), tx = field(p, 'text');
+  const l = tx.v ? tx.l : nm.l;
+  // de titel staat al in beeld; voorgelezen wordt het verhaal (of alleen de titel als er geen verhaal is)
+  const story = sentences(tx.v);
+  const lines = story.length ? story : [nm.v + (p.year ? ', ' + p.year : '')].filter(Boolean);
+  playing = true; setPlayBtn(); setVm('full');
+  const st = $('#story'); st.classList.remove('hidden', 'fade');
+  $('#storyTitle').textContent = (p.year ? p.year + ' · ' : '') + (nm.v || '');
+  $('#storyLine').textContent = lines[0] || '';
+  const synth = window.speechSynthesis;
+  // ondertitels op leestempo (als er geen stem is, of als de stem weigert)
+  const captions = from => {
+    let i = from;
+    const next = () => { if (!playing) return; if (i >= lines.length) return endStory(); $('#storyLine').textContent = lines[i]; capTimer = setTimeout(next, Math.max(2400, lines[i++].length * 60)); };
+    next();
+  };
+  if (synth && lines.length){
+    // alles direct in de wachtrij zetten (binnen de tik); ondertitel volgt per zin
+    let spoke = false, fellBack = false;
+    const fallback = i => { if (!playing || fellBack) return; fellBack = true; utts = []; try { synth.cancel(); } catch (e) {} captions(i); };
+    utts = lines.map((line, i) => {
+      const u = new SpeechSynthesisUtterance(line);
+      u.lang = LANGS[l].tts; const v = pickVoice(l); if (v) u.voice = v; u.rate = 0.97;
+      u.onstart = () => { spoke = true; if (playing && !fellBack) $('#storyLine').textContent = line; };
+      u.onerror = ev => { if (!playing || fellBack) return; if (!spoke || i === lines.length - 1) fallback(spoke ? lines.length : i); };
+      if (i === lines.length - 1) u.onend = () => { if (playing && !fellBack) endStory(); };
+      return u;
+    });
+    try { if (synth.speaking || synth.pending) synth.cancel(); } catch (e) {}
+    utts.forEach(u => synth.speak(u));
+    // geen geluid na 1,5 s? dan alleen ondertitels
+    capTimer = setTimeout(() => { if (playing && !spoke) fallback(0); }, 1500);
+  } else captions(0);
+}
+function endStory(){
+  playing = false; setPlayBtn();
+  const st = $('#story'); st.classList.add('fade');
+  clearTimeout(capTimer); capTimer = setTimeout(() => st.classList.add('hidden'), 2500);
+}
+function stopStory(){
+  const was = playing; playing = false; utts = [];
+  try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+  clearTimeout(capTimer); $('#story').classList.add('hidden'); setPlayBtn();
+  return was;
+}
+
+/* ---------- elke frame: begeleiding ---------- */
+function updateView(now){
+  meterLight(now);
+  const vw = innerWidth, ppd = vw / HFOV, o = current && current.orient;
+  const guide = $('#guide');
+  let tx = 0, ty = 0, tr = 0, msg = '', ok = false, guided = false, dbg = '';
+  if (night){
+    msg = t('dayChip'); guide.classList.add('hidden');
+  } else if (o && o.ok && sensorsFresh()){
+    guided = true; guide.classList.remove('hidden');
+    const L = LEVELS[speling], m = locked ? HOLD : 1;
+    const useH = o.abs && S.abs && S.hasHeading;
+    const dH = useH ? adiff(S.heading, o.heading) : 0, dP = S.pitch - o.pitch, dR = adiff(S.roll, o.roll);
+    const rH = beyond(dH, L.h * m), rP = beyond(dP, L.p * m), rR = beyond(dR, L.r * m);
+    tx = -rH * ppd;   // te ver naar rechts gekeken → het oude beeld ligt links
+    ty = rP * ppd;    // te hoog gericht → het oude beeld ligt lager
+    tr = -rR;         // met de klok mee gekanteld → horizon draait tegen de klok in
+    const inside = !rH && !rP && !rR;
+    if (inside){ outSince = 0; if (!locked){ inSince = inSince || now; if (now - inSince > ENTER_MS) setLocked(true); } }
+    else { inSince = 0; if (locked){ outSince = outSince || now; if (now - outSince > LEAVE_MS) setLocked(false); } }
+    const err = Math.hypot(rH, rP, rR * 0.6);
+    guide.classList.toggle('lock', locked);
+    guide.classList.toggle('near', !locked && err < 6);
+    $('#arL').classList.toggle('on', !locked && tx < -0.5);
+    $('#arR').classList.toggle('on', !locked && tx > 0.5);
+    $('#arU').classList.toggle('on', !locked && ty < -0.5);
+    $('#arD').classList.toggle('on', !locked && ty > 0.5);
+    const rot = $('#arRot'); rot.classList.toggle('on', !locked && !tx && !ty && Math.abs(rR) > 0); rot.classList.toggle('ccw', rR > 0);
+    const flipped = o.angle !== S.angle && [90, 270].includes(o.angle) && [90, 270].includes(S.angle);
+    if (locked) msg = t('found');
+    else if (flipped) msg = t('flip');
+    else if (tx || ty) msg = moveMsg(Math.sign(tx), Math.sign(ty));
+    else if (rR) msg = t('level');
+    else msg = t('found');
+    if (debug) dbg = `Δdraai ${dH.toFixed(1)}°  Δkantel ${dP.toFixed(1)}°  Δhorizon ${dR.toFixed(1)}°\n${locked ? 'GOED' : 'zoekt'} · speling ${speling} · licht ${luma == null ? '–' : luma.toFixed(0)}`;
+  } else if (o && o.ok && now - viewStart < 2500){
+    msg = t('wait'); guide.classList.add('hidden');
+  } else {
+    msg = t('eye'); guide.classList.add('hidden');
+  }
+  if (playing && (locked || !guided)) msg = current.year ? current.year : t('then');
+  const chip = $('#chip'); chip.textContent = msg; chip.classList.toggle('ok', (guided && locked) || playing);
+  $('#btnPlay').classList.toggle('pulse', guided && locked && !playing);
+
+  // afvlakken zodat niets verspringt
+  const k = 0.22; D.x += (tx - D.x) * k; D.y += (ty - D.y) * k; D.r += (tr - D.r) * k;
+  applyTransform(D.x, D.y, D.r);
+  const target = vm === 'half' ? GHOST : 1;
+  D.vis += (target - D.vis) * (target > D.vis ? 0.045 : 0.12);   // langzaam infaden, sneller terug
+  const layer = $('#photoLayer');
+  if (vm === 'wipe'){
+    layer.style.opacity = D.vis.toFixed(3);
+    layer.style.clipPath = `inset(0 ${((1 - wipeX) * 100).toFixed(2)}% 0 0)`;
+    $('#wipeLine').style.left = (wipeX * vw) + 'px';
+  } else { layer.style.opacity = D.vis.toFixed(3); layer.style.clipPath = ''; }
+  if (debug) $('#dbg').textContent = dbg || (night ? 'nachtmodus' : 'geen sensordata');
+}
+function setLocked(v){
+  locked = v;
+  if (v){ try { navigator.vibrate && navigator.vibrate([18, 40, 18]); } catch (e) {} }
+}
+
+function updateCalLive(){
+  applyTransform();
+  const ro = $('#readout'), lv = $('#level');
+  if (sensorsFresh()){
+    ro.textContent = `↻ ${S.hasHeading ? Math.round(S.heading) + '°' : '–'}  ↕ ${S.pitch.toFixed(1)}°  ⦵ ${S.roll.toFixed(1)}°`;
+    lv.style.transform = `rotate(${-S.roll}deg)`; lv.classList.toggle('on', Math.abs(S.roll) < 1);
+  } else { ro.textContent = 'geen sensor'; lv.style.transform = ''; }
+}
+function loop(now){
+  requestAnimationFrame(loop);
+  if (mode === 'home') return;
+  sample();
+  if (mode === 'view') updateView(now);
+  else if (mode === 'cal-live') updateCalLive();
+  else applyTransform();
+}
+requestAnimationFrame(loop);
+
+/* ================= gebaren ================= */
+const ptrs = new Map(); let g0 = null;
+function snapshot(){
+  const pts = [...ptrs.values()], s = { T: { ...T }, n: pts.length };
+  if (pts.length === 1) s.p = pts[0];
+  if (pts.length >= 2){ const [a, b] = pts; s.d = Math.hypot(b.x - a.x, b.y - a.y) || 1; s.a = Math.atan2(b.y - a.y, b.x - a.x); s.m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 }; }
+  return s;
+}
+const stageEl = $('#stage');
+stageEl.addEventListener('pointerdown', e => {
+  if (e.target.closest('.hud,.side')) return;
+  if (mode === 'view' && vm === 'wipe'){ wipeX = clamp(e.clientX / innerWidth, 0, 1); ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); try { stageEl.setPointerCapture(e.pointerId); } catch (_) {} return; }
+  if (mode !== 'cal-adjust') return;
+  try { stageEl.setPointerCapture(e.pointerId); } catch (_) {}
+  ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); g0 = snapshot();
+});
+stageEl.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  if (mode === 'view' && vm === 'wipe'){ wipeX = clamp(e.clientX / innerWidth, 0, 1); return; }
+  if (mode !== 'cal-adjust' || !g0) return;
+  ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  const vw = innerWidth, vh = innerHeight, pts = [...ptrs.values()];
+  if (pts.length === 1 && g0.n === 1){
+    T.x = g0.T.x + (pts[0].x - g0.p.x) / vw; T.y = g0.T.y + (pts[0].y - g0.p.y) / vh;
+  } else if (pts.length >= 2 && g0.n >= 2){
+    const [a, b] = pts, d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ang = Math.atan2(b.y - a.y, b.x - a.x);
+    const m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 }, k = d / g0.d, th = ang - g0.a;
+    const c0 = { x: vw / 2 + g0.T.x * vw, y: vh / 2 + g0.T.y * vh }, vx = c0.x - g0.m.x, vy = c0.y - g0.m.y;
+    const cx = m.x + k * (vx * Math.cos(th) - vy * Math.sin(th)), cy = m.y + k * (vx * Math.sin(th) + vy * Math.cos(th));
+    T.s = clamp(g0.T.s * k, 0.15, 10); T.r = g0.T.r + th / DEG; T.x = (cx - vw / 2) / vw; T.y = (cy - vh / 2) / vh;
+  }
+});
+function endPtr(e){
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if (mode === 'cal-adjust'){ if (Math.abs(T.r) < 1.2) T.r = 0; g0 = ptrs.size ? snapshot() : null; }
+}
+stageEl.addEventListener('pointerup', endPtr);
+stageEl.addEventListener('pointercancel', endPtr);
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* ================= QR ================= */
+function pointUrl(id){ return location.origin + location.pathname + '?p=' + encodeURIComponent(id); }
+let qrLib = null;
+function loadQrLib(){
+  if (qrLib) return qrLib;
+  qrLib = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = () => res(window.QRCode); s.onerror = () => { qrLib = null; rej(); };
+    document.head.appendChild(s);
+  });
+  return qrLib;
+}
+async function openQr(id){
+  const p = loadPoints().find(x => x.id === id); if (!p) return;
+  const url = pointUrl(id);
+  openSheet(`<h2>${esc(p.name || 'Naamloos punt')}</h2>
+    <p>Print deze code of zet hem op een tegel. Scannen opent dit punt direct. In het prototype werkt dat alleen op een toestel waar het punt al op staat.</p>
+    <div class="qr" id="qrBox"></div>
+    <div class="url">${esc(url)}</div>
+    <div class="row"><button class="btn" data-act="copy" data-url="${esc(url)}">Kopieer link</button><button class="btn ghost" data-act="close">Sluit</button></div>`);
+  try { const QR = await loadQrLib(); const box = $('#qrBox'); if (box) new QR(box, { text:url, width:200, height:200, correctLevel: QR.CorrectLevel.M }); }
+  catch (e) { const box = $('#qrBox'); if (box) box.outerHTML = '<p>QR-code kon niet laden (geen internet?). Gebruik de link hieronder.</p>'; }
+}
+
+/* ================= export / import ================= */
+function exportPoints(){
+  const blob = new Blob([JSON.stringify({ app:'buitenmuseum', v:3, points: loadPoints() })], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'buitenmuseum-punten.json';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function importPoints(file){
+  try {
+    const data = JSON.parse(await file.text());
+    const incoming = Array.isArray(data) ? data : data.points;
+    if (!Array.isArray(incoming)) throw new Error();
+    const map = new Map(loadPoints().map(p => [p.id, p]));
+    incoming.forEach(p => { if (p && p.id && p.img) map.set(p.id, p); });
+    savePoints([...map.values()].sort((a, b) => (b.created || 0) - (a.created || 0)));
+    renderList(); toast(incoming.length + ' punt(en) geïmporteerd');
+  } catch (e) { toast('Dit bestand kan niet worden geïmporteerd'); }
+}
+
+/* ================= events ================= */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  if (act === 'close') closeSheet();
+  else if (act === 'home') goHome();
+  else if (act === 'pick') $('#photoFile').click();
+  else if (act === 'startcal') startCalibration();
+  else if (act === 'save') saveDraft();
+  else if (act === 'entry') openEntry(id);
+  else if (act === 'startview') startView(id);
+  else if (act === 'edit') openEdit(id);
+  else if (act === 'etab'){ grabEdit(); edit.tab = el.dataset.l; renderEdit(); }
+  else if (act === 'esave') saveEdit();
+  else if (act === 'qr') openQr(id);
+  else if (act === 'playinfo'){ closeSheet(); playStory(); }
+  else if (act === 'lang'){
+    lang = el.dataset.l; lsSet(KEY_LANG, lang); applyLang();
+    if (sheetCtx && sheetCtx.type === 'entry') openEntry(sheetCtx.id);
+    else if (sheetCtx && sheetCtx.type === 'info') openInfo();
+  }
+  else if (act === 'copy'){ try { await navigator.clipboard.writeText(el.dataset.url); toast('Link gekopieerd'); } catch (_) { toast('Kopiëren lukt niet, selecteer de link'); } }
+  else if (act === 'del'){
+    const p = loadPoints().find(x => x.id === id);
+    openSheet(`<h2>Punt verwijderen?</h2><p>${esc(p && p.name || 'Naamloos punt')} wordt van dit toestel verwijderd.</p>
+      <div class="row"><button class="btn danger" data-act="delyes" data-id="${id}">Verwijder</button><button class="btn ghost" data-act="close">Annuleer</button></div>`);
+  }
+  else if (act === 'delyes'){ savePoints(loadPoints().filter(x => x.id !== id)); closeSheet(); renderList(); }
+});
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && (mode === 'home' || (sheetCtx && sheetCtx.type === 'info'))) closeSheet(); });
+$('#btnNew').addEventListener('click', openNew);
+$('#photoFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; onPhotoPicked(f); });
+$('#btnClose').addEventListener('click', goHome);
+$('#btnInfo').addEventListener('click', openInfo);
+$('#btnNight').addEventListener('click', () => setNight(!night, true));
+$('#btnPlay').addEventListener('click', () => { if (playing) stopStory(); else playStory(); });
+$('#vmSeg').addEventListener('click', e => { const b = e.target.closest('[data-vm]'); if (b){ if (playing && b.dataset.vm === 'half') stopStory(); setVm(b.dataset.vm); } });
+$('#btnShutter').addEventListener('click', onShutter);
+$('#btnRetake').addEventListener('click', () => { $('#photoLayer').style.opacity = $('#opCal').value; setMode('cal-live'); });
+$('#btnReset').addEventListener('click', () => { T = { x:0, y:0, s:1, r:0 }; });
+$('#btnNext').addEventListener('click', openSaveForm);
+$('#opCal').addEventListener('input', e => { $('#photoLayer').style.opacity = e.target.value; });
+$('#opAdj').addEventListener('input', e => { $('#photoLayer').style.opacity = e.target.value; });
+function renderSettings(){
+  document.querySelectorAll('#spelingSeg button').forEach(b => b.classList.toggle('on', b.dataset.sp === speling));
+  document.querySelectorAll('#dbgSeg button').forEach(b => b.classList.toggle('on', (b.dataset.dbg === '1') === debug));
+}
+$('#spelingSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-sp]'); if (!b) return;
+  speling = b.dataset.sp; lsSet(KEY_SP, speling); renderSettings();
+  const L = LEVELS[speling]; toast(`Speling ${speling}: ±${L.h}° draaien, ±${L.p}° kantelen`);
+});
+$('#dbgSeg').addEventListener('click', e => { const b = e.target.closest('[data-dbg]'); if (!b) return; debug = b.dataset.dbg === '1'; lsSet(KEY_DBG, debug ? '1' : '0'); renderSettings(); });
+$('#btnExport').addEventListener('click', exportPoints);
+$('#btnImport').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importPoints(f); });
+addEventListener('resize', layoutPhoto);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && mode !== 'home') keepAwake(); });
+
+/* ================= start ================= */
+(async () => {
+  await initStore();
+  renderSettings(); applyLang(); setPlayBtn(); renderList();
+  const deep = new URLSearchParams(location.search).get('p');
+  if (deep){
+    const p = loadPoints().find(x => x.id === deep);
+    if (p) openEntry(p);
+    else openSheet(`<h2>Punt niet gevonden</h2><p>Dit punt staat (nog) niet op dit toestel. In het prototype worden punten lokaal bewaard; importeer ze eerst via "Importeer".</p><div class="row"><button class="btn" data-act="home">Naar het overzicht</button></div>`);
+  }
+  window.__bm.ready = true;
+})();
+
+// test-haak (alleen voor geautomatiseerd testen)
+window.__bm = { S, orientFrom, get T(){ return T; }, loadPoints, savePoints, get locked(){ return locked; }, get D(){ return D; }, setNight, get playing(){ return playing; } };
+})();
+</script>
+</body>
+</html>
